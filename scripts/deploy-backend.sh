@@ -94,20 +94,19 @@ docker run -d --name starttech-backend --restart unless-stopped -p 8080:8080 \
   -e LOG_LEVEL=INFO \
   -e LOG_FORMAT=json \
   ${ECR_IMAGE}
-sleep 5
+sleep 10
 docker ps --filter name=starttech-backend
-curl -fsS http://127.0.0.1:8080/health
+for i in 1 2 3 4 5 6; do
+  if curl -fsS http://127.0.0.1:8080/ping >/dev/null; then
+    echo "Local /ping OK"
+    break
+  fi
+  sleep 5
+done
+curl -fsS http://127.0.0.1:8080/ping
 EOS
 
-# Build JSON array of commands for SSM (one command per line)
-if command -v jq >/dev/null 2>&1; then
-  COMMANDS_JSON="$(printf '%s\n' "${REMOTE_SCRIPT}" | jq -R -s 'split("\n") | map(select(length > 0))')"
-elif command -v python3 >/dev/null 2>&1; then
-  COMMANDS_JSON="$(printf '%s\n' "${REMOTE_SCRIPT}" | python3 -c "import json,sys; print(json.dumps([l for l in sys.stdin.read().splitlines() if l]))")"
-else
-  echo "ERROR: install jq or python3 to build SSM command payload"
-  exit 1
-fi
+REMOTE_SCRIPT_B64="$(printf '%s' "${REMOTE_SCRIPT}" | base64 | tr -d '\n')"
 
 for INSTANCE_ID in ${INSTANCE_IDS}; do
   echo "==> Deploying to instance ${INSTANCE_ID}"
@@ -115,7 +114,7 @@ for INSTANCE_ID in ${INSTANCE_IDS}; do
     --instance-ids "${INSTANCE_ID}" \
     --document-name "AWS-RunShellScript" \
     --comment "Deploy StartTech backend ${IMAGE_TAG}" \
-    --parameters "{\"commands\":${COMMANDS_JSON}}" \
+    --parameters "commands=[\"#!/bin/bash\",\"set -e\",\"echo ${REMOTE_SCRIPT_B64} | base64 -d | bash\"]" \
     --query 'Command.CommandId' \
     --output text)"
 
