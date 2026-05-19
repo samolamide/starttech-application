@@ -4,8 +4,8 @@ set -euo pipefail
 : "${API_URL:?API_URL is required}"
 
 HEALTH_URL="${API_URL%/}/health"
-MAX_ATTEMPTS="${MAX_ATTEMPTS:-30}"
-SLEEP_SECONDS="${SLEEP_SECONDS:-10}"
+MAX_ATTEMPTS="${MAX_ATTEMPTS:-60}"
+SLEEP_SECONDS="${SLEEP_SECONDS:-15}"
 
 echo "==> Health check: ${HEALTH_URL}"
 

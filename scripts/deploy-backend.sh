@@ -81,6 +81,7 @@ aws ecr get-login-password --region ${AWS_REGION} | docker login --username AWS 
 docker pull ${ECR_IMAGE}
 docker stop starttech-backend 2>/dev/null || true
 docker rm starttech-backend 2>/dev/null || true
+# Use default json-file logging (awslogs driver is unreliable on AL2023 stock Docker)
 docker run -d --name starttech-backend --restart unless-stopped -p 8080:8080 \
   -e PORT=8080 \
   -e MONGO_URI="\$MONGO_URI" \
@@ -92,10 +93,10 @@ docker run -d --name starttech-backend --restart unless-stopped -p 8080:8080 \
   -e SECURE_COOKIE=false \
   -e LOG_LEVEL=INFO \
   -e LOG_FORMAT=json \
-  --log-driver=awslogs \
-  --log-opt awslogs-region=${AWS_REGION} \
-  --log-opt awslogs-group=${CLOUDWATCH_LOG_GROUP} \
   ${ECR_IMAGE}
+sleep 5
+docker ps --filter name=starttech-backend
+curl -fsS http://127.0.0.1:8080/health
 EOS
 
 # Build JSON array of commands for SSM (one command per line)
