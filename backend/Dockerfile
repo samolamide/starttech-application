@@ -10,7 +10,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /out/much-to-do ./cmd/api/main.go
 
 FROM alpine:3.20
 
-RUN addgroup -S app && adduser -S app -G app
+# Required for MongoDB Atlas (and other TLS) connections from Alpine
+RUN apk add --no-cache ca-certificates \
+  && addgroup -S app && adduser -S app -G app
 
 WORKDIR /app
 COPY --from=builder /out/much-to-do /app/much-to-do
