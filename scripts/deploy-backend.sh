@@ -95,8 +95,6 @@ docker run -d --name starttech-backend --restart unless-stopped -p 8080:8080 \
   --log-driver=awslogs \
   --log-opt awslogs-region=${AWS_REGION} \
   --log-opt awslogs-group=${CLOUDWATCH_LOG_GROUP} \
-  --log-opt awslogs-stream=starttech-backend \
-  --log-opt awslogs-create-group=true \
   ${ECR_IMAGE}
 EOS
 
