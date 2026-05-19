@@ -11,6 +11,11 @@ on:
 env:
   AWS_REGION: us-east-1
   NODE_VERSION: '22'
+  # From terraform output (override via repo secrets if needed)
+  S3_BUCKET: starttech-dev-frontend-051826713811
+  CLOUDFRONT_DISTRIBUTION_ID: E2MH3GOFQYF8TO
+  CLOUDFRONT_DOMAIN: d3tp2sespfhcea.cloudfront.net
+  VITE_API_BASE_URL: http://starttech-dev-alb-1473945814.us-east-1.elb.amazonaws.com
 
 jobs:
   build:
@@ -42,8 +47,6 @@ jobs:
         continue-on-error: true
 
       - name: Build production bundle
-        env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
         run: npm run build
 
       - name: Upload build artifact
@@ -75,13 +78,8 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Deploy frontend
-        env:
-          S3_BUCKET: ${{ secrets.S3_BUCKET }}
-          CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
         run: bash scripts/deploy-frontend.sh
 
       - name: Deployment notification
-        env:
-          CF_DOMAIN: ${{ secrets.CLOUDFRONT_DOMAIN }}
         run: |
-          echo "::notice title=Frontend deployed::https://${CF_DOMAIN:-cloudfront}"
+          echo "::notice title=Frontend deployed::https://${{ env.CLOUDFRONT_DOMAIN }}"
