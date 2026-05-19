@@ -100,7 +100,14 @@ curl -fsS http://127.0.0.1:8080/health
 EOS
 
 # Build JSON array of commands for SSM (one command per line)
-COMMANDS_JSON="$(printf '%s\n' "${REMOTE_SCRIPT}" | jq -R -s 'split("\n") | map(select(length > 0))')"
+if command -v jq >/dev/null 2>&1; then
+  COMMANDS_JSON="$(printf '%s\n' "${REMOTE_SCRIPT}" | jq -R -s 'split("\n") | map(select(length > 0))')"
+elif command -v python3 >/dev/null 2>&1; then
+  COMMANDS_JSON="$(printf '%s\n' "${REMOTE_SCRIPT}" | python3 -c "import json,sys; print(json.dumps([l for l in sys.stdin.read().splitlines() if l]))")"
+else
+  echo "ERROR: install jq or python3 to build SSM command payload"
+  exit 1
+fi
 
 for INSTANCE_ID in ${INSTANCE_IDS}; do
   echo "==> Deploying to instance ${INSTANCE_ID}"
