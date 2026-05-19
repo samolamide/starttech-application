@@ -123,6 +123,21 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      - name: Ensure ASG instances register with SSM (instance refresh if needed)
+        env:
+          ASG_NAME: ${{ env.ASG_NAME }}
+        run: |
+          ONLINE="$(aws ssm describe-instance-information \
+            --query 'length(InstanceInformationList[?PingStatus==`Online`])' --output text)"
+          if [[ "${ONLINE}" == "0" || "${ONLINE}" == "None" ]]; then
+            echo "No SSM-managed instances yet; starting instance refresh..."
+            aws autoscaling start-instance-refresh \
+              --auto-scaling-group-name "${ASG_NAME}" \
+              --preferences '{"MinHealthyPercentage":50,"InstanceWarmup":300}'
+            echo "Waiting 6 minutes for new instances and SSM registration..."
+            sleep 360
+          fi
+
       - name: Rolling deploy via SSM
         env:
           ECR_REPOSITORY: ${{ env.ECR_REPOSITORY }}

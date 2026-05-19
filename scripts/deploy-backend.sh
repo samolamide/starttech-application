@@ -37,6 +37,38 @@ if [[ -z "${INSTANCE_IDS}" || "${INSTANCE_IDS}" == "None" ]]; then
   exit 1
 fi
 
+# Only deploy to instances registered with SSM (required for Run Command)
+SSM_READY=""
+echo "==> Checking SSM registration for instances: ${INSTANCE_IDS}"
+for attempt in $(seq 1 36); do
+  SSM_READY=""
+  for INSTANCE_ID in ${INSTANCE_IDS}; do
+    PING="$(aws ssm describe-instance-information \
+      --filters "Key=InstanceIds,Values=${INSTANCE_ID}" \
+      --query 'InstanceInformationList[0].PingStatus' \
+      --output text 2>/dev/null || echo "None")"
+    if [[ "${PING}" == "Online" ]]; then
+      SSM_READY="${SSM_READY} ${INSTANCE_ID}"
+    else
+      echo "Instance ${INSTANCE_ID} SSM status: ${PING}"
+    fi
+  done
+  if [[ -n "${SSM_READY// /}" ]]; then
+    break
+  fi
+  echo "Waiting for SSM agent (attempt ${attempt}/36)..."
+  sleep 10
+done
+
+if [[ -z "${SSM_READY// /}" ]]; then
+  echo "ERROR: No instances are Online in SSM. Run an ASG instance refresh after terraform apply:"
+  echo "  aws autoscaling start-instance-refresh --auto-scaling-group-name ${ASG_NAME}"
+  exit 1
+fi
+
+INSTANCE_IDS="${SSM_READY}"
+echo "==> SSM-ready instances:${INSTANCE_IDS}"
+
 read -r -d '' REMOTE_SCRIPT <<EOS || true
 #!/bin/bash
 set -eux
